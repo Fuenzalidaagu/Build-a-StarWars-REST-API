@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, User, People, Planet
 #from models import Person
 
 app = Flask(__name__)
@@ -36,14 +36,76 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
+people_list = [{'id': 1, 'name': 'Luke Skywalker'}, {'id': 2, 'name': 'Leia Organa'}]
+planets_list = [{'id': 1, 'name': 'Tatooine'}, {'id': 2, 'name': 'Alderaan'}]
 
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
+users_list = [{'id': 1, 'name': 'John Doe', 'email': 'john@example.com'}]
+user_favorites = {'planets': [1], 'people': [2]}
 
-    return jsonify(response_body), 200
+@app.route('/people', methods=['GET'])
+def get_people():
+    return jsonify(people_list)
+
+@app.route('/people/<int:people_id>', methods=['GET'])
+def get_people_by_id(people_id):
+    people_info = next((p for p in people_list if p['id'] == people_id), None)
+    if not people_info:
+        raise NotFound(f"La people con id {people_id} no existe.")
+    return jsonify(people_info)
+
+@app.route('/planets', methods=['GET'])
+def get_planets():
+    return jsonify(planets_list)
+
+@app.route('/planets/<int:planet_id>', methods=['GET'])
+def get_planet_by_id(planet_id):
+    planet_info = next((p for p in planets_list if p['id'] == planet_id), None)
+    if not planet_info:
+        raise NotFound(f"El planet con id {planet_id} no existe.")
+    return jsonify(planet_info)
+
+@app.route('/users', methods=['GET'])
+def get_users():
+    return jsonify(users_list)
+
+@app.route('/users/favorites', methods=['GET'])
+def get_user_favorites():
+    return jsonify(user_favorites)
+
+@app.route('/favorite/planet/<int:planet_id>', methods=['POST'])
+def add_favorite_planet(planet_id):
+    planet_info = next((p for p in planets_list if p['id'] == planet_id), None)
+    if not planet_info:
+        raise NotFound(f"El planet con id {planet_id} no existe.")
+    if planet_id in user_favorites['planets']:
+        raise BadRequest(f"El planet con id {planet_id} ya es un favorito.")
+    user_favorites['planets'].append(planet_id)
+    return jsonify(success=True)
+
+@app.route('/favorite/people/<int:people_id>', methods=['POST'])
+def add_favorite_people(people_id):
+    people_info = next((p for p in people_list if p['id'] == people_id), None)
+    if not people_info:
+        raise NotFound(f"La people con id {people_id} no existe.")
+    if people_id in user_favorites['people']:
+        raise BadRequest(f"La people con id {people_id} ya es un favorito.")
+    user_favorites['people'].append(people_id)
+    return jsonify(success=True)
+
+@app.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
+def delete_favorite_planet(planet_id):
+    if planet_id not in user_favorites['planets']:
+        raise BadRequest(f"El planet con id {planet_id} no es un favorito.")
+    user_favorites['planets'].remove(planet_id)
+    return jsonify(success=True)
+
+@app.route('/favorite/people/<int:people_id>', methods=['DELETE'])
+def delete_favorite_people(people_id):
+    if people_id not in user_favorites['people']:
+        raise BadRequest(f"La people con id {people_id} no es un favorito.")
+    user_favorites['people'].remove(people_id)
+    return jsonify(success=True)
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
